@@ -20,6 +20,9 @@ func main() {
 	defer f.Close()
 
 	logrus.SetLevel(logrus.DebugLevel)
+	formatter := new(logrus.TextFormatter)
+	formatter.FullTimestamp = true
+	logrus.SetFormatter(formatter)
 
 	db := tarfs.NewBTreeStore(4)
 	tfs, err := tarfs.FromFile(f, db)
