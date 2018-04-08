@@ -23,7 +23,7 @@ type server struct {
 	stream io.ReaderAt
 }
 
-// Newserver creates a new tarfs server from the passed in metadata store
+// Newserver creates a new tarfs server from the passed in metadata store.
 // The passed in metadata store should be pre-populated with filesystem metadata.
 // See `FromFile` as an example of this.
 func Newserver(db MetadataStore, tarStream io.ReaderAt) pathfs.FileSystem {
@@ -188,6 +188,12 @@ func (s *server) GetAttr(name string, context *fuse.Context) (attr *fuse.Attr, s
 	}
 
 	return attr, fuse.OK
+}
+
+func (s *server) StatFs(name string) *fuse.StatfsOut {
+	// TODO: actually fill this in
+	// But this is good enough to make this work with overlayfs.
+	return &fuse.StatfsOut{}
 }
 
 func checkPermissions(fi FileInfo, context *fuse.Context) bool {
