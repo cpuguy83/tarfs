@@ -32,7 +32,6 @@ type Owner struct {
 }
 
 // StatT is an implementation of FileInfo.
-// TODO: Do we need `FileInfo`?
 type StatT struct {
 	Mode  uint32
 	Owner Owner
@@ -44,7 +43,7 @@ type StatT struct {
 }
 
 type dirNode struct {
-	node
+	*node
 	entries []FileInfo
 }
 
@@ -55,10 +54,6 @@ func (n *dirNode) Entries() []FileInfo {
 		entries = append(entries, e)
 	}
 	return entries
-}
-
-type fileNode struct {
-	node
 }
 
 type node struct {

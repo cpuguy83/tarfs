@@ -17,4 +17,3 @@ See cmd/tarfsd as an example implementation.
 ## TODO(non-exhaustive):
 - Not quite happy with the metadata storage, consider alternatives specifically
 around how directory entries are stored and fetched.
-- Directory listings don't curently work

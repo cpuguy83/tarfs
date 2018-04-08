@@ -60,7 +60,27 @@ func FromFile(f *os.File, db MetadataStore) (pathfs.FileSystem, error) {
 		stat.Ino = pos
 
 		key := headerNameEntry(h.Name)
-		db.Add(key, &node{name: key, stat: &stat})
+		var nodeInfo FileInfo = &node{name: h.Name, stat: &stat}
+		if h.FileInfo().IsDir() {
+			node := nodeInfo.(*node)
+			if dirInfo := db.Get(key); dirInfo != nil {
+				dirInfo.(*dirNode).node = node
+				nodeInfo = dirInfo
+			} else {
+				nodeInfo = &dirNode{node: node}
+			}
+		}
+		db.Add(key, nodeInfo)
+
+		parentKey := filepath.Dir(key)
+		var parent *dirNode
+		if parentInfo := db.Get(parentKey); parentInfo != nil {
+			parent = parentInfo.(*dirNode)
+		} else {
+			parent = &dirNode{node: &node{name: filepath.Base(parentKey)}}
+		}
+		parent.entries = append(parent.entries, nodeInfo)
+		db.Add(parentKey, parent)
 	}
 
 	return Newserver(db, f), nil
@@ -126,7 +146,7 @@ func (s *server) OpenDir(name string, context *fuse.Context) ([]fuse.DirEntry, f
 	entries := make([]fuse.DirEntry, 0, len(dirEntries))
 	for _, e := range dirEntries {
 		entries = append(entries, fuse.DirEntry{
-			Name: e.Name(),
+			Name: filepath.Base(e.Name()),
 			Mode: uint32(e.Mode()),
 		})
 	}
@@ -135,15 +155,10 @@ func (s *server) OpenDir(name string, context *fuse.Context) ([]fuse.DirEntry, f
 }
 
 func (s *server) GetAttr(name string, context *fuse.Context) (attr *fuse.Attr, status fuse.Status) {
+	logrus.WithField("name", name).Debug("GetAttr")
 	defer func() {
-		logrus.WithField("name", name).WithField("status", status).WithField("attr", attr).Debug("GetAttr")
+		logrus.WithField("name", name).WithField("status", status).WithField("attr", attr).Debug("end GetAttr")
 	}()
-	if name == "" {
-		return &fuse.Attr{
-			Mode:  fuse.S_IFDIR | 0755,
-			Owner: fuse.Owner{Gid: context.Gid, Uid: context.Uid},
-		}, fuse.OK
-	}
 	fi := s.db.Get(fuseNameToKey(name))
 	if fi == nil {
 		return nil, fuse.ENOENT
