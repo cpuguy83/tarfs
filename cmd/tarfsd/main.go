@@ -5,6 +5,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	"fmt"
+
+	"path/filepath"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/cpuguy83/tarfs"
 	"github.com/hanwen/go-fuse/fuse"
@@ -13,6 +17,10 @@ import (
 )
 
 func main() {
+	if len(os.Args) != 3 {
+		fmt.Fprintln(os.Stderr, usage())
+		os.Exit(1)
+	}
 	f, err := os.Open(os.Args[1])
 	if err != nil {
 		panic(err)
@@ -47,4 +55,10 @@ func main() {
 	}()
 
 	srv.Serve()
+}
+
+func usage() string {
+	return fmt.Sprintf(`Usage:
+	%s [TAR FILE PATH] [MOUNT PATH]
+`, filepath.Base(os.Args[0]))
 }
