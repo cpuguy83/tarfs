@@ -7,6 +7,7 @@ import (
 
 	"os"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/pkg/errors"
@@ -50,6 +51,7 @@ type dirNode struct {
 func (n *dirNode) Entries() []FileInfo {
 	entries := make([]FileInfo, 0, len(n.entries))
 	for _, e := range n.entries {
+		logrus.WithField("entry", e.Name()).Debug("adding entry")
 		entries = append(entries, e)
 	}
 	return entries

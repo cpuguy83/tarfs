@@ -1,6 +1,7 @@
 package tarfs
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -63,6 +64,9 @@ func (s *btreeStore) Add(key string, fi FileInfo) error {
 
 func (s *btreeStore) Get(key string) FileInfo {
 	logrus.WithField("key", key).Debug("store.Get")
+	var info FileInfo
+	defer logrus.WithField("info", fmt.Sprintf("+%v", info)).Debug("end store.Get")
+
 	sk := &stringKey{
 		key: key,
 	}
@@ -70,8 +74,7 @@ func (s *btreeStore) Get(key string) FileInfo {
 	if i == nil {
 		return nil
 	}
-	info := i.(*stringKey).info
-	logrus.WithField("info", info).Debug("end store.Get")
+	info = i.(*stringKey).info
 	return info
 }
 
@@ -83,6 +86,8 @@ type DirIndex interface {
 
 func (s *btreeStore) Entries(key string) []FileInfo {
 	logrus.WithField("key", key).Debug("Entries")
+	defer logrus.WithField("key", key).Debug("end Entries")
+
 	i := s.db.Get(&stringKey{key: key})
 	if i == nil {
 		panic("non-existent key")
@@ -99,6 +104,7 @@ func (s *btreeStore) Entries(key string) []FileInfo {
 		key: sk.key + "//",
 	}
 
+	logrus.WithField("key", key).Debug("performing btree search for dir entries")
 	entries := make([]FileInfo, 0, 5)
 	s.db.AscendRange(sk, until, func(i btree.Item) bool {
 		esk := i.(*stringKey)
