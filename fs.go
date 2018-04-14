@@ -41,6 +41,23 @@ func Newserver(db MetadataStore, tarStream io.ReaderAt) pathfs.FileSystem {
 func FromFile(f *os.File, db MetadataStore) (pathfs.FileSystem, error) {
 	tr := tar.NewReader(f)
 
+	// we add the root entry because some archive does not contain the root entry.
+	// If the archive contains the real stat for the root, the real stat is used.
+	rootStat := StatT{
+		Mode: uint32(0755 | os.ModeDir),
+		Owner: Owner{
+			UID: uint32(os.Geteuid()),
+			GID: uint32(os.Getegid()),
+		},
+		// follows traditional convention, adopted in several file systems
+		// including ext4: https://ext4.wiki.kernel.org/index.php/Ext4_Disk_Layout#Special_inodes
+		Ino:  2,
+		Size: 4096,
+	}
+	rootNode := &dirNode{node: &node{name: "", stat: &rootStat}}
+	db.Add("/", rootNode)
+
+	missingDirs := make(map[string]struct{}, 0)
 	for {
 		h, err := tr.Next()
 		if err != nil {
@@ -66,6 +83,7 @@ func FromFile(f *os.File, db MetadataStore) (pathfs.FileSystem, error) {
 			if dirInfo := db.Get(key); dirInfo != nil {
 				dirInfo.(*dirNode).node = node
 				nodeInfo = dirInfo
+				delete(missingDirs, key)
 			} else {
 				nodeInfo = &dirNode{node: node}
 			}
@@ -77,10 +95,19 @@ func FromFile(f *os.File, db MetadataStore) (pathfs.FileSystem, error) {
 		if parentInfo := db.Get(parentKey); parentInfo != nil {
 			parent = parentInfo.(*dirNode)
 		} else {
+			missingDirs[parentKey] = struct{}{}
 			parent = &dirNode{node: &node{name: filepath.Base(parentKey)}}
 		}
 		parent.entries = append(parent.entries, nodeInfo)
 		db.Add(parentKey, parent)
+	}
+
+	if len(missingDirs) != 0 {
+		ss := []string{}
+		for s := range missingDirs {
+			ss = append(ss, s)
+		}
+		return nil, errors.Errorf("missing directory entries: %s", strings.Join(ss, ","))
 	}
 
 	return Newserver(db, f), nil
