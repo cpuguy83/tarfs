@@ -39,7 +39,20 @@ func Newserver(db MetadataStore, tarStream io.ReaderAt) pathfs.FileSystem {
 // the backing store for the tarfs server.
 // The passed in file must not be acessed or modified while the server is active.
 func FromFile(f *os.File, db MetadataStore) (pathfs.FileSystem, error) {
-	tr := tar.NewReader(f)
+	st, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	return FromReaderAt(f, st.Size(), db)
+}
+
+// FromReaderAt creates a new tarfs server from io.ReaderAt.
+// The size of the tar archive needs to be provided.
+// Metadata from the tarfile is stored in the metadata store, which is used as
+// the backing store for the tarfs server.
+func FromReaderAt(ra io.ReaderAt, size int64, db MetadataStore) (pathfs.FileSystem, error) {
+	r := io.NewSectionReader(ra, 0, size)
+	tr := tar.NewReader(r)
 
 	// we add the root entry because some archive does not contain the root entry.
 	// If the archive contains the real stat for the root, the real stat is used.
@@ -67,7 +80,7 @@ func FromFile(f *os.File, db MetadataStore) (pathfs.FileSystem, error) {
 			break
 		}
 
-		pos, err := f.Seek(0, io.SeekCurrent)
+		pos, err := r.Seek(0, io.SeekCurrent)
 		if err != nil {
 			return nil, errors.Wrap(err, "error getting file position in tar")
 		}
@@ -110,7 +123,7 @@ func FromFile(f *os.File, db MetadataStore) (pathfs.FileSystem, error) {
 		return nil, errors.Errorf("missing directory entries: %s", strings.Join(ss, ","))
 	}
 
-	return Newserver(db, f), nil
+	return Newserver(db, ra), nil
 }
 
 func headerNameEntry(name string) string {
