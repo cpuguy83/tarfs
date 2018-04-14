@@ -7,16 +7,16 @@ import (
 
 func TestAddGet(t *testing.T) {
 	db := NewBTreeStore(2)
-	db.Add("/", &fileNode{node: node{stat: &StatT{Mode: 755 | uint32(os.ModeDir)}}})
-	db.Add("/foo", &fileNode{node: node{name: "foo", stat: &StatT{Mode: 755 | uint32(os.ModeDir)}}})
-	db.Add("/foo/bar", &fileNode{node: node{name: "bar", stat: &StatT{Mode: 644}}})
+	db.Add("/", &node{stat: &StatT{Mode: 755 | uint32(os.ModeDir)}})
+	db.Add("/foo", &node{name: "foo", stat: &StatT{Mode: 755 | uint32(os.ModeDir)}})
+	db.Add("/foo/bar", &node{name: "bar", stat: &StatT{Mode: 644}})
 
 	node := db.Get("/")
 	if node == nil {
 		t.Fatal("nil node")
 	}
 	if node.Name() != "" {
-		t.Fatalf("got unexpected node for key `/`: %+v", node.(*fileNode))
+		t.Fatalf("got unexpected node for key `/`: %+v", node)
 	}
 
 	node = db.Get("/foo")
@@ -24,7 +24,7 @@ func TestAddGet(t *testing.T) {
 		t.Fatal("nil node")
 	}
 	if node.Name() != "foo" {
-		t.Fatalf("got unexpected node for key `/foo`: %+v", node.(*fileNode))
+		t.Fatalf("got unexpected node for key `/foo`: %+v", node)
 	}
 
 	node = db.Get("/foo/bar")
@@ -32,23 +32,23 @@ func TestAddGet(t *testing.T) {
 		t.Fatal("nil node")
 	}
 	if node.Name() != "bar" {
-		t.Fatalf("got unexpected node for key `/foo/bar`: %+v", node.(*fileNode))
+		t.Fatalf("got unexpected node for key `/foo/bar`: %+v", node)
 	}
 
 	node = db.Get("/not-exist")
 	if node != nil {
-		t.Fatalf("expected nil node: %+v", node.(*fileNode))
+		t.Fatalf("expected nil node: %+v", node)
 	}
 }
 
 func TestEntries(t *testing.T) {
 	db := NewBTreeStore(2)
-	db.Add("/", &fileNode{node: node{stat: &StatT{Mode: 755 | uint32(os.ModeDir)}}})
-	db.Add("/foo", &fileNode{node: node{name: "foo", stat: &StatT{Mode: 755 | uint32(os.ModeDir)}}})
-	db.Add("/bar", &fileNode{node: node{name: "bar", stat: &StatT{Mode: 755 | uint32(os.ModeDir)}}})
-	db.Add("/bar/baz", &fileNode{node: node{name: "baz", stat: &StatT{Mode: 600}}})
-	db.Add("/bar/quux", &fileNode{node: node{name: "quux", stat: &StatT{Mode: 755 | uint32(os.ModeDir)}}})
-	db.Add("/bar/quux/quack", &fileNode{node: node{name: "quack", stat: &StatT{Mode: 600}}})
+	db.Add("/", &node{stat: &StatT{Mode: 755 | uint32(os.ModeDir)}})
+	db.Add("/foo", &node{name: "foo", stat: &StatT{Mode: 755 | uint32(os.ModeDir)}})
+	db.Add("/bar", &node{name: "bar", stat: &StatT{Mode: 755 | uint32(os.ModeDir)}})
+	db.Add("/bar/baz", &node{name: "baz", stat: &StatT{Mode: 600}})
+	db.Add("/bar/quux", &node{name: "quux", stat: &StatT{Mode: 755 | uint32(os.ModeDir)}})
+	db.Add("/bar/quux/quack", &node{name: "quack", stat: &StatT{Mode: 600}})
 
 	ls := db.Entries("/")
 	if len(ls) != 2 {
@@ -80,6 +80,6 @@ func TestEntries(t *testing.T) {
 		t.Fatalf("expected 1 entry, got: %+v", ls)
 	}
 	if ls[0].Name() != "quack" {
-		t.Fatalf("expected entry %s, got %+v", "quack", ls[0].(*fileNode))
+		t.Fatalf("expected entry %s, got %+v", "quack", ls[0])
 	}
 }
