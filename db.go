@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/google/btree"
+	"github.com/sirupsen/logrus"
 )
 
 // MetadataStore is an abstraction for implementing different storages for

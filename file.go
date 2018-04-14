@@ -7,10 +7,10 @@ import (
 
 	"os"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 // FileInfo is the metadata stored about a node in a tar file.

@@ -8,11 +8,11 @@ import (
 
 	"os"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 // server is the fuse server which serves a tar file as a path filesystem.

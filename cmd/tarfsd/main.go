@@ -9,11 +9,11 @@ import (
 
 	"path/filepath"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/cpuguy83/tarfs"
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
