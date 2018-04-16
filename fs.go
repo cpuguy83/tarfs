@@ -8,11 +8,11 @@ import (
 
 	"os"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 // server is the fuse server which serves a tar file as a path filesystem.
@@ -39,8 +39,38 @@ func Newserver(db MetadataStore, tarStream io.ReaderAt) pathfs.FileSystem {
 // the backing store for the tarfs server.
 // The passed in file must not be acessed or modified while the server is active.
 func FromFile(f *os.File, db MetadataStore) (pathfs.FileSystem, error) {
-	tr := tar.NewReader(f)
+	st, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	return FromReaderAt(f, st.Size(), db)
+}
 
+// FromReaderAt creates a new tarfs server from io.ReaderAt.
+// The size of the tar archive needs to be provided.
+// Metadata from the tarfile is stored in the metadata store, which is used as
+// the backing store for the tarfs server.
+func FromReaderAt(ra io.ReaderAt, size int64, db MetadataStore) (pathfs.FileSystem, error) {
+	r := io.NewSectionReader(ra, 0, size)
+	tr := tar.NewReader(r)
+
+	// we add the root entry because some archive does not contain the root entry.
+	// If the archive contains the real stat for the root, the real stat is used.
+	rootStat := StatT{
+		Mode: uint32(0755 | os.ModeDir),
+		Owner: Owner{
+			UID: uint32(os.Geteuid()),
+			GID: uint32(os.Getegid()),
+		},
+		// follows traditional convention, adopted in several file systems
+		// including ext4: https://ext4.wiki.kernel.org/index.php/Ext4_Disk_Layout#Special_inodes
+		Ino:  2,
+		Size: 4096,
+	}
+	rootNode := &dirNode{node: &node{name: "", stat: &rootStat}}
+	db.Add("/", rootNode)
+
+	missingDirs := make(map[string]struct{}, 0)
 	for {
 		h, err := tr.Next()
 		if err != nil {
@@ -50,7 +80,7 @@ func FromFile(f *os.File, db MetadataStore) (pathfs.FileSystem, error) {
 			break
 		}
 
-		pos, err := f.Seek(0, io.SeekCurrent)
+		pos, err := r.Seek(0, io.SeekCurrent)
 		if err != nil {
 			return nil, errors.Wrap(err, "error getting file position in tar")
 		}
@@ -66,6 +96,7 @@ func FromFile(f *os.File, db MetadataStore) (pathfs.FileSystem, error) {
 			if dirInfo := db.Get(key); dirInfo != nil {
 				dirInfo.(*dirNode).node = node
 				nodeInfo = dirInfo
+				delete(missingDirs, key)
 			} else {
 				nodeInfo = &dirNode{node: node}
 			}
@@ -77,13 +108,22 @@ func FromFile(f *os.File, db MetadataStore) (pathfs.FileSystem, error) {
 		if parentInfo := db.Get(parentKey); parentInfo != nil {
 			parent = parentInfo.(*dirNode)
 		} else {
+			missingDirs[parentKey] = struct{}{}
 			parent = &dirNode{node: &node{name: filepath.Base(parentKey)}}
 		}
 		parent.entries = append(parent.entries, nodeInfo)
 		db.Add(parentKey, parent)
 	}
 
-	return Newserver(db, f), nil
+	if len(missingDirs) != 0 {
+		ss := []string{}
+		for s := range missingDirs {
+			ss = append(ss, s)
+		}
+		return nil, errors.Errorf("missing directory entries: %s", strings.Join(ss, ","))
+	}
+
+	return Newserver(db, ra), nil
 }
 
 func headerNameEntry(name string) string {
