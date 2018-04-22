@@ -152,21 +152,6 @@ func (s *server) Open(name string, flags uint32, context *fuse.Context) (nodefs.
 	}, fuse.OK
 }
 
-func fuseMode(fi os.FileInfo) uint32 {
-	var mode uint32
-	switch {
-	case fi.IsDir():
-		mode = fuse.S_IFDIR
-	case fi.Mode().IsRegular():
-		mode = fuse.S_IFREG
-	default:
-		mode = fuse.S_IFLNK
-	}
-
-	mode = mode | uint32(fi.Mode().Perm())
-	return mode
-}
-
 func (s *server) OpenDir(name string, context *fuse.Context) ([]fuse.DirEntry, fuse.Status) {
 	logrus.WithField("name", name).Debug("OpenDir")
 	dir := s.db.Get(fuseNameToKey(name))
