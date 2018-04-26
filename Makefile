@@ -1,0 +1,3 @@
+.PHONY: check
+check:
+	gometalinter --config .gometalinter.json ./...
