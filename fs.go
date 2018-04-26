@@ -68,9 +68,11 @@ func FromReaderAt(ra io.ReaderAt, size int64, db MetadataStore) (pathfs.FileSyst
 		Size: 4096,
 	}
 	rootNode := &dirNode{node: &node{name: "", stat: &rootStat}}
-	db.Add("/", rootNode)
+	if err := db.Add("/", rootNode); err != nil {
+		return nil, errors.Wrap(err, "error adding root node")
+	}
 
-	missingDirs := make(map[string]struct{}, 0)
+	missingDirs := make(map[string]struct{})
 	for {
 		h, err := tr.Next()
 		if err != nil {
@@ -101,7 +103,10 @@ func FromReaderAt(ra io.ReaderAt, size int64, db MetadataStore) (pathfs.FileSyst
 				nodeInfo = &dirNode{node: node}
 			}
 		}
-		db.Add(key, nodeInfo)
+
+		if err := db.Add(key, nodeInfo); err != nil {
+			return nil, errors.Wrapf(err, "error adding node entry to db: %s", h.Name)
+		}
 
 		parentKey := filepath.Dir(key)
 		var parent *dirNode
@@ -112,7 +117,9 @@ func FromReaderAt(ra io.ReaderAt, size int64, db MetadataStore) (pathfs.FileSyst
 			parent = &dirNode{node: &node{name: filepath.Base(parentKey)}}
 		}
 		parent.entries = append(parent.entries, nodeInfo)
-		db.Add(parentKey, parent)
+		if err := db.Add(parentKey, parent); err != nil {
+			return nil, errors.Wrapf(err, "error adding parent node entry to db for %s", h.Name)
+		}
 	}
 
 	if len(missingDirs) != 0 {

@@ -25,7 +25,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer f.Close()
+	defer f.Close() // nolint: errcheck
 
 	logrus.SetLevel(logrus.DebugLevel)
 	formatter := new(logrus.TextFormatter)
@@ -50,7 +50,9 @@ func main() {
 	signal.Notify(c, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
 		for range c {
-			srv.Unmount()
+			if err := srv.Unmount(); err != nil {
+				logrus.WithError(err).Error("error unmounting filesystem on shutdown")
+			}
 		}
 	}()
 
